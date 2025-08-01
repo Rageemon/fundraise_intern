@@ -59,7 +59,7 @@ export const authService = {
           id: authData.user.id,
           email: credentials.email,
           name: credentials.email.split('@')[0], // Use email prefix as name
-          referral_code: generateReferralCode(),
+          referral_code: generateReferralCode(authData.user.id),
           total_raised: 0,
           donation_count: 0,
           join_date: new Date().toISOString(),
@@ -114,7 +114,7 @@ export const authService = {
         id: authData.user.id,
         email: userData.email,
         name: userData.name,
-        referral_code: generateReferralCode(),
+        referral_code: generateReferralCode(authData.user.id),
         total_raised: 0,
         donation_count: 0,
         join_date: new Date().toISOString(),
@@ -178,11 +178,12 @@ export const authService = {
 };
 
 // Helper function to generate referral code
-function generateReferralCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-} 
+function generateReferralCode(userName: string): string {
+  // Convert name to lowercase and remove spaces
+  const cleanName = userName.toLowerCase().replace(/\s+/g, '');
+
+  // Generate 4 random digits
+  const randomDigits = Math.floor(1000 + Math.random() * 9000); // between 1000-9999
+
+  return `${cleanName}${randomDigits}`;
+}
