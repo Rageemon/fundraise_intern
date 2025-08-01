@@ -4,12 +4,52 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Medal, Award, TrendingUp, TrendingDown } from "lucide-react";
-import { leaderboardData, currentUser } from "@/lib/mockData";
+import { supabaseDataService, generateLeaderboardData, type Intern, type LeaderboardEntry } from "@/lib/supabaseData";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 const Leaderboard = () => {
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [currentUser, setCurrentUser] = useState<Intern | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [allInterns, userData] = await Promise.all([
+          supabaseDataService.getAllInterns(),
+          supabaseDataService.getCurrentUser()
+        ]);
+        
+        const leaderboard = generateLeaderboardData(allInterns);
+        setLeaderboardData(leaderboard);
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error('Error loading leaderboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+  
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading leaderboard...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
   const topPerformer = leaderboardData[0];
-  const currentUserEntry = leaderboardData.find(entry => entry.intern.id === currentUser.id);
+  const currentUserEntry = leaderboardData.find(entry => entry.intern.id === currentUser?.id);
   
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -75,12 +115,12 @@ const Leaderboard = () => {
                   {topPerformer.intern.name}
                 </h3>
                 <p className="text-warning-foreground/80">
-                  ${topPerformer.intern.totalRaised.toLocaleString()} raised total
+                  ${topPerformer.intern.total_raised.toLocaleString()} raised total
                 </p>
               </div>
-              <Badge className="bg-warning-foreground/20 text-warning-foreground border-warning-foreground/20">
-                Leading by ${(topPerformer.intern.totalRaised - (leaderboardData[1]?.intern.totalRaised || 0)).toLocaleString()}
-              </Badge>
+                <Badge className="bg-warning-foreground/20 text-warning-foreground border-warning-foreground/20">
+                  Leading by ${(topPerformer.intern.total_raised - (leaderboardData[1]?.intern.total_raised || 0)).toLocaleString()}
+                </Badge>
             </CardContent>
           </Card>
         )}
@@ -103,7 +143,7 @@ const Leaderboard = () => {
                       Rank #{currentUserEntry.rank}
                     </p>
                     <p className="text-sm text-primary-foreground/80">
-                      ${currentUserEntry.intern.totalRaised.toLocaleString()} raised
+                      ${currentUserEntry.intern.total_raised.toLocaleString()} raised
                     </p>
                   </div>
                 </div>
@@ -139,8 +179,8 @@ const Leaderboard = () => {
           <CardContent>
             <div className="space-y-4">
               {leaderboardData.map((entry) => {
-                const isCurrentUser = entry.intern.id === currentUser.id;
-                const progressPercentage = (entry.intern.totalRaised / topPerformer.intern.totalRaised) * 100;
+                const isCurrentUser = entry.intern.id === currentUser?.id;
+                const progressPercentage = (entry.intern.total_raised / topPerformer.intern.total_raised) * 100;
                 
                 return (
                   <div
@@ -185,7 +225,7 @@ const Leaderboard = () => {
                           {isCurrentUser && " (You)"}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
-                          {entry.intern.referralCode}
+                          {entry.intern.referral_code}
                         </p>
                       </div>
                     </div>
@@ -195,7 +235,7 @@ const Leaderboard = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Total Raised</span>
                         <span className="font-medium">
-                          ${entry.intern.totalRaised.toLocaleString()}
+                          ${entry.intern.total_raised.toLocaleString()}
                         </span>
                       </div>
                       <Progress value={progressPercentage} className="h-2" />

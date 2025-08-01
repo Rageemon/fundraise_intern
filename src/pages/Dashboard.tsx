@@ -15,16 +15,60 @@ import {
   Gift,
   Calendar
 } from "lucide-react";
-import { currentUser, rewards, getProgressToNextReward, getUnlockedRewards } from "@/lib/mockData";
+import { supabaseDataService, getProgressToNextReward, getUnlockedRewards, generateLeaderboardData, type Intern, type Reward } from "@/lib/supabaseData";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
 const Dashboard = () => {
   const { toast } = useToast();
-  const progressData = getProgressToNextReward(currentUser.totalRaised);
-  const unlockedRewards = getUnlockedRewards(currentUser.totalRaised);
+  const [currentUser, setCurrentUser] = useState<Intern | null>(null);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [userData, rewardsData] = await Promise.all([
+          supabaseDataService.getCurrentUser(),
+          supabaseDataService.getRewards()
+        ]);
+        
+        setCurrentUser(userData);
+        setRewards(rewardsData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load data. Please refresh the page.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [toast]);
+  
+  if (loading || !currentUser) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  const progressData = getProgressToNextReward(rewards, currentUser.total_raised);
+  const unlockedRewards = getUnlockedRewards(rewards, currentUser.total_raised);
   
   const copyReferralCode = () => {
-    navigator.clipboard.writeText(currentUser.referralCode);
+    navigator.clipboard.writeText(currentUser.referral_code);
     toast({
       title: "Copied!",
       description: "Referral code copied to clipboard",
@@ -32,7 +76,7 @@ const Dashboard = () => {
   };
 
   const shareProgress = () => {
-    const shareText = `I've raised $${currentUser.totalRaised.toLocaleString()} for our fundraising campaign! Join me with code: ${currentUser.referralCode}`;
+    const shareText = `I've raised $${currentUser.total_raised.toLocaleString()} for our fundraising campaign! Join me with code: ${currentUser.referral_code}`;
     if (navigator.share) {
       navigator.share({
         title: 'My Fundraising Progress',
@@ -43,6 +87,32 @@ const Dashboard = () => {
       toast({
         title: "Copied!",
         description: "Share text copied to clipboard",
+      });
+    }
+  };
+
+  // Demo function to simulate receiving a donation
+  const simulateDonation = async () => {
+    const donationAmount = Math.floor(Math.random() * 500) + 100; // $100-$600
+    const success = await supabaseDataService.addDonation(currentUser.id, donationAmount);
+    
+    if (success) {
+      // Update local state
+      setCurrentUser(prev => prev ? {
+        ...prev,
+        total_raised: prev.total_raised + donationAmount,
+        donation_count: prev.donation_count + 1
+      } : null);
+      
+      toast({
+        title: "🎉 New Donation!",
+        description: `Received $${donationAmount.toLocaleString()} donation! Your total is now $${(currentUser.total_raised + donationAmount).toLocaleString()}`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to add donation. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -76,14 +146,14 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Total Raised"
-            value={`$${currentUser.totalRaised.toLocaleString()}`}
+            value={`$${currentUser.total_raised.toLocaleString()}`}
             icon={<DollarSign className="w-5 h-5" />}
             trend="+12% this month"
             gradient="bg-gradient-success"
           />
           <MetricCard
             title="Donations"
-            value={currentUser.donationCount}
+            value={currentUser.donation_count}
             icon={<Users className="w-5 h-5" />}
             trend="+3 this week"
           />
@@ -95,7 +165,7 @@ const Dashboard = () => {
           />
           <MetricCard
             title="Days Active"
-            value={Math.floor((new Date().getTime() - new Date(currentUser.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
+            value={Math.floor((new Date().getTime() - new Date(currentUser.join_date).getTime()) / (1000 * 60 * 60 * 24))}
             icon={<Calendar className="w-5 h-5" />}
           />
         </div>
@@ -113,7 +183,7 @@ const Dashboard = () => {
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground mb-1">Share this code to earn bonuses:</p>
                 <code className="text-lg font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded">
-                  {currentUser.referralCode}
+                  {currentUser.referral_code}
                 </code>
               </div>
               <Button variant="outline" size="sm" onClick={copyReferralCode} className="gap-2">
@@ -145,7 +215,7 @@ const Dashboard = () => {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current Progress</span>
                 <span className="font-medium">
-                  ${currentUser.totalRaised.toLocaleString()} / ${progressData.target.toLocaleString()}
+                  ${currentUser.total_raised.toLocaleString()} / ${progressData.target.toLocaleString()}
                 </span>
               </div>
               <Progress value={progressData.progress} className="h-3" />
@@ -176,10 +246,10 @@ const Dashboard = () => {
                 key={reward.id}
                 title={reward.title}
                 description={reward.description}
-                target={reward.target}
-                current={currentUser.totalRaised}
-                reward={reward.reward}
-                isUnlocked={currentUser.totalRaised >= reward.target}
+                target={reward.target_amount}
+                current={currentUser.total_raised}
+                reward={reward.reward_text}
+                isUnlocked={currentUser.total_raised >= reward.target_amount}
               />
             ))}
           </div>
@@ -203,6 +273,14 @@ const Dashboard = () => {
               </Button>
               <Button variant="outline" size="sm">
                 💡 Get Tips
+              </Button>
+              <Button 
+                variant="premium" 
+                size="sm" 
+                onClick={simulateDonation}
+                className="gap-2"
+              >
+                💰 Simulate Donation
               </Button>
             </div>
           </CardContent>
