@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Medal, Award, TrendingUp, TrendingDown } from "lucide-react";
 import { supabaseDataService, generateLeaderboardData, type Intern, type LeaderboardEntry } from "@/lib/supabaseData";
+import { authService } from "@/lib/authService";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
@@ -19,7 +20,7 @@ const Leaderboard = () => {
       try {
         const [allInterns, userData] = await Promise.all([
           supabaseDataService.getAllInterns(),
-          supabaseDataService.getCurrentUser()
+          authService.getCurrentUser()
         ]);
         
         const leaderboard = generateLeaderboardData(allInterns);
