@@ -33,40 +33,10 @@ export interface LeaderboardEntry {
 
 // Service functions
 export const supabaseDataService = {
-  // Get current user (for demo, we'll use Alex Johnson)
-  getCurrentUser: async (): Promise<Intern | null> => {
-    try {
-      const { data, error } = await (supabase as any)
-        .from('interns')
-        .select('*')
-        .eq('email', 'alex.johnson@company.com')
-        .single();
-      
-      if (error) {
-        console.error('Error fetching current user:', error);
-        return null;
-      }
-      
-      return data ? {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        referral_code: data.referral_code,
-        total_raised: Number(data.total_raised),
-        donation_count: data.donation_count,
-        join_date: data.join_date,
-        avatar: data.avatar || '/placeholder.svg'
-      } : null;
-    } catch (error) {
-      console.error('Error in getCurrentUser:', error);
-      return null;
-    }
-  },
-
   // Get all interns for leaderboard
   getAllInterns: async (): Promise<Intern[]> => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('interns')
         .select('*')
         .order('total_raised', { ascending: false });
@@ -76,7 +46,7 @@ export const supabaseDataService = {
         return [];
       }
       
-      return data?.map((intern: any) => ({
+      return data?.map((intern) => ({
         id: intern.id,
         name: intern.name,
         email: intern.email,
@@ -95,7 +65,7 @@ export const supabaseDataService = {
   // Get all rewards
   getRewards: async (): Promise<Reward[]> => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('rewards')
         .select('*')
         .order('target_amount', { ascending: true });
@@ -105,7 +75,7 @@ export const supabaseDataService = {
         return [];
       }
       
-      return data?.map((reward: any) => ({
+      return data?.map((reward) => ({
         id: reward.id,
         title: reward.title,
         description: reward.description,
@@ -122,7 +92,7 @@ export const supabaseDataService = {
   // Update intern's total raised amount
   updateInternRaised: async (internId: string, newAmount: number): Promise<boolean> => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('interns')
         .update({ total_raised: newAmount })
         .eq('id', internId);
@@ -143,7 +113,7 @@ export const supabaseDataService = {
   addDonation: async (internId: string, amount: number): Promise<boolean> => {
     try {
       // Get current intern data
-      const { data: intern, error: fetchError } = await (supabase as any)
+      const { data: intern, error: fetchError } = await supabase
         .from('interns')
         .select('total_raised, donation_count')
         .eq('id', internId)
@@ -155,7 +125,7 @@ export const supabaseDataService = {
       }
       
       // Update with new amounts
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from('interns')
         .update({ 
           total_raised: Number(intern.total_raised) + amount,

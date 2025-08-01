@@ -4,30 +4,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Eye, EyeOff } from "lucide-react";
+import { DollarSign, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/lib/authService";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
     
-    // Simulate login delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await authService.login({ email, password });
+      
+      if (result.success && result.user) {
+        toast({
+          title: "Welcome back!",
+          description: `Successfully logged in as ${result.user.name}`,
+        });
+        navigate("/dashboard");
+      } else {
+        setError(result.error || "Login failed");
+        toast({
+          title: "Login Failed",
+          description: result.error || "Please check your credentials and try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError("An unexpected error occurred");
       toast({
-        title: "Welcome back!",
-        description: "You've successfully logged into your intern portal.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
       });
-      navigate("/dashboard");
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -62,6 +84,12 @@ const Login = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -72,6 +100,7 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="bg-background/50 border-border/50"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -85,6 +114,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="bg-background/50 border-border/50 pr-10"
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -92,6 +122,7 @@ const Login = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -134,6 +165,9 @@ const Login = () => {
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Email: intern@company.com</p>
                 <p>Password: demo123</p>
+                <p className="text-xs text-muted-foreground/70 mt-2">
+                  Note: New users will be automatically created if they don't exist
+                </p>
               </div>
             </div>
           </CardContent>

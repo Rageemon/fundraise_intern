@@ -4,68 +4,74 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DollarSign, Eye, EyeOff } from "lucide-react";
+import { DollarSign, Eye, EyeOff, AlertCircle, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/lib/authService";
 
 const Signup = () => {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreedToTerms: false
-  });
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive"
-      });
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
-    if (!formData.agreedToTerms) {
-      toast({
-        title: "Error",
-        description: "Please agree to the terms and conditions",
-        variant: "destructive"
-      });
+    // Validate password strength
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
       setIsLoading(false);
       return;
     }
 
-    // Simulate signup delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await authService.register({ email, password, name });
+      
+      if (result.success && result.user) {
+        toast({
+          title: "Welcome!",
+          description: `Account created successfully for ${result.user.name}`,
+        });
+        navigate("/dashboard");
+      } else {
+        setError(result.error || "Registration failed");
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Please check your information and try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError("An unexpected error occurred");
       toast({
-        title: "Account created!",
-        description: "Welcome to the FundRaise Pro intern portal.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
       });
-      navigate("/dashboard");
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-8">
         {/* Logo and Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
@@ -78,7 +84,7 @@ const Signup = () => {
               FundRaise Pro
             </h1>
             <p className="text-muted-foreground">
-              Join the intern fundraising program
+              Create your intern account
             </p>
           </div>
         </div>
@@ -88,62 +94,60 @@ const Signup = () => {
           <form onSubmit={handleSubmit}>
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">
-                Create Account
+                Join the Team
               </CardTitle>
               <CardDescription className="text-center">
-                Start your fundraising journey today
+                Create your account to start fundraising
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="Alex"
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    required
-                    className="bg-background/50 border-border/50"
-                  />
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">{error}</span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="lastName"
-                    placeholder="Johnson"
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    id="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
-                    className="bg-background/50 border-border/50"
+                    className="bg-background/50 border-border/50 pl-10"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="intern@company.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="bg-background/50 border-border/50"
+                  disabled={isLoading}
                 />
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a secure password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    placeholder="Create a password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                     className="bg-background/50 border-border/50 pr-10"
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -151,6 +155,7 @@ const Signup = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -160,7 +165,6 @@ const Signup = () => {
                   </Button>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
@@ -168,10 +172,11 @@ const Signup = () => {
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     className="bg-background/50 border-border/50 pr-10"
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -179,6 +184,7 @@ const Signup = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -187,20 +193,6 @@ const Signup = () => {
                     )}
                   </Button>
                 </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={formData.agreedToTerms}
-                  onCheckedChange={(checked) => handleInputChange("agreedToTerms", checked as boolean)}
-                />
-                <Label htmlFor="terms" className="text-sm text-muted-foreground">
-                  I agree to the{" "}
-                  <Link to="/terms" className="text-primary hover:text-primary-glow underline-offset-4 hover:underline">
-                    Terms & Conditions
-                  </Link>
-                </Label>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
@@ -223,6 +215,23 @@ const Signup = () => {
               </div>
             </CardFooter>
           </form>
+        </Card>
+
+        {/* Benefits */}
+        <Card className="bg-muted/20 border-border/30">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                Why Join FundRaise Pro?
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>🎯 Track your fundraising progress</p>
+                <p>🏆 Unlock rewards and achievements</p>
+                <p>📊 Access detailed analytics</p>
+                <p>🤝 Connect with other interns</p>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

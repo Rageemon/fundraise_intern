@@ -13,15 +13,19 @@ import {
   Share2,
   Target,
   Gift,
-  Calendar
+  Calendar,
+  LogOut
 } from "lucide-react";
 import { supabaseDataService, getProgressToNextReward, getUnlockedRewards, generateLeaderboardData, type Intern, type Reward } from "@/lib/supabaseData";
+import { authService, type AuthUser } from "@/lib/authService";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<Intern | null>(null);
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -29,12 +33,21 @@ const Dashboard = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [userData, rewardsData] = await Promise.all([
-          supabaseDataService.getCurrentUser(),
-          supabaseDataService.getRewards()
-        ]);
+        // Get authenticated user
+        const user = await authService.getCurrentUser();
+        if (!user) {
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to access your dashboard.",
+            variant: "destructive"
+          });
+          navigate("/login");
+          return;
+        }
+
+        const rewardsData = await supabaseDataService.getRewards();
         
-        setCurrentUser(userData);
+        setCurrentUser(user);
         setRewards(rewardsData);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -49,7 +62,25 @@ const Dashboard = () => {
     };
     
     loadData();
-  }, [toast]);
+  }, [toast, navigate]);
+  
+  const handleSignOut = async () => {
+    try {
+      await authService.signOut();
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   if (loading || !currentUser) {
     return (
@@ -138,6 +169,10 @@ const Dashboard = () => {
             <Button variant="premium" className="gap-2">
               <TrendingUp className="w-4 h-4" />
               View Analytics
+            </Button>
+            <Button variant="outline" onClick={handleSignOut} className="gap-2">
+              <LogOut className="w-4 h-4" />
+              Sign Out
             </Button>
           </div>
         </div>

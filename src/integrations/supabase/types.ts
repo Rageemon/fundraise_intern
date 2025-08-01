@@ -14,7 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interns: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          referral_code: string
+          total_raised: number
+          donation_count: number
+          join_date: string
+          avatar: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Insert: {
+          id: string
+          name: string
+          email: string
+          referral_code: string
+          total_raised?: number
+          donation_count?: number
+          join_date?: string
+          avatar?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          referral_code?: string
+          total_raised?: number
+          donation_count?: number
+          join_date?: string
+          avatar?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rewards: {
+        Row: {
+          id: string
+          title: string
+          description: string
+          target_amount: number
+          reward_text: string
+          category: 'milestone' | 'achievement' | 'bonus'
+          created_at?: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description: string
+          target_amount: number
+          reward_text: string
+          category: 'milestone' | 'achievement' | 'bonus'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          target_amount?: number
+          reward_text?: string
+          category?: 'milestone' | 'achievement' | 'bonus'
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -48,8 +114,7 @@ export type Tables<
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Row: infer R
     }
     ? R
