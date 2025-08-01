@@ -114,7 +114,7 @@ export const authService = {
         id: authData.user.id,
         email: userData.email,
         name: userData.name,
-        referral_code: generateReferralCode(authData.user.id),
+        referral_code: generateReferralCode(userData.name),
         total_raised: 0,
         donation_count: 0,
         join_date: new Date().toISOString(),
