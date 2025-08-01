@@ -59,7 +59,7 @@ export const authService = {
           id: authData.user.id,
           email: credentials.email,
           name: credentials.email.split('@')[0], // Use email prefix as name
-          referral_code: generateReferralCode(authData.user.id),
+          referral_code: generateReferralCode(credentials.email.split('@')[0]),
           total_raised: 0,
           donation_count: 0,
           join_date: new Date().toISOString(),
